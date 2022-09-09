@@ -26,7 +26,7 @@ class MMConLoss(nn.Module):
         
         
     def forward(self, emb):
-        # emb[modality] (n_batch, emb_dim)
+        # emb[modality]: (n_batch, emb_dim)
         assert type(emb) == dict
 
         loss = 0
