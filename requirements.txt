@@ -1,0 +1,13 @@
+attrdict==2.0.1
+info_nce_pytorch==0.1.4
+librosa==0.9.2
+matplotlib==3.5.1
+numpy==1.21.5
+pytorch_warmup==0.1.0
+PyYAML==6.0
+soundfile==0.11.0
+torch==1.11.0
+torchaudio==0.11.0
+torchlibrosa==0.0.9
+torchvision==0.12.0
+tqdm==4.62.3
