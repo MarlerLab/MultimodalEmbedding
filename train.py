@@ -36,7 +36,7 @@ def train(
     
     for epoch in range(max_epoch):
         
-        for batch in train_loader:
+        for batch in loader:
             if step == opts.train.max_step:
                 break
             step += 1
@@ -63,24 +63,46 @@ def train(
                 loss.backward()
                 optimizer.step()
                 
+            if opts.train.debug:
+                #########################
+                # TODO: delete if nan issue is fixed
+                if torch.isnan(loss):
+                    # check architecture value
+                    os.makedirs('debug', exist_ok=True)
+                    import json
+                    logger = {
+                        'video': vid_enc_logger,
+                        'spec': spec_enc_logger,
+                        'audio': aud_enc_logger,
+                        'projector': projector_logger,
+                    }
+                    with open(os.path.join('debug', 'weight_log.json'), 'w') as f:
+                        json.dump(logger, f, indent=4)
+                #########################
 
-            # status
+            # log status
             if opts.train.wandb:
                 wandb.log({
-                    'lr': optimizer.param_groups[0]['lr'],
-                    'loss': loss.item(),
-                    # 'loss_vs': ,
-                    # 'loss_vw': ,
-                    # 'loss_sw': ,
+                    # for report
+                    'report/loss': loss.item(),
+                    
+                    # for debug
+                    'debug/lr': optimizer.param_groups[0]['lr'],
+                    'debug/loss_vs': criterion.modality_loss[('video', 'spec')]
+                                        + criterion.modality_loss[('spec', 'video')],
+                    'debug/loss_vw': criterion.modality_loss[('video', 'audio')]
+                                        + criterion.modality_loss[('audio', 'video')],
+                    'debug/loss_sw': criterion.modality_loss[('spec', 'audio')]
+                                        + criterion.modality_loss[('audio', 'spec')],
                 })
 
             # scheduler step
             with warmup_scheduler.dampening():
-                lr_scheduler.step()
+                scheduler.step()
 
             prog_bar.update()
             prog_bar.set_description(
-                f"epoch: {round(step / len(loader), 3)} | ",
+                f"epoch: {round(step / len(loader), 3)} | "
                 f"loss: {round(loss.item(), 3)}"
             )
 
@@ -127,6 +149,40 @@ if __name__ == '__main__':
     model = MMEncoder(opts)
     model.to(device)
     model.train()
+    
+    #########################
+    # TODO: delete when nan issue is fixed
+    # nan value debugging
+    if opts.train.debug:
+        def log_layer_output(logger, module_name):
+            def hook(module, input, output):
+                # logger[module_name] = output.detach()
+                if type(output) is dict:
+                    output = output['embedding']    # cnn14 res1dnet31
+                output = output.detach()
+                logger[module_name] = {
+                    'abs_min': output.abs().min().item(),
+                    'abs_max': output.abs().max().item(),
+                    'mean': output.mean().item(),
+                    'std': output.std().item(),
+                }
+            return hook
+        
+        vid_enc_logger = {}
+        for name, module in model.vid_enc.named_modules():
+            module.register_forward_hook(log_layer_output(vid_enc_logger, name))
+        spec_enc_logger = {}
+        for name, module in model.spec_enc.named_modules():
+            module.register_forward_hook(log_layer_output(spec_enc_logger, name))
+        aud_enc_logger = {}
+        for name, module in model.aud_enc.named_modules():
+            module.register_forward_hook(log_layer_output(aud_enc_logger, name))
+        projector_logger = {}
+        for name, module in model.projector.named_modules():
+            module.register_forward_hook(log_layer_output(projector_logger, name))
+    #########################
+    
+
 
 
     # load data
