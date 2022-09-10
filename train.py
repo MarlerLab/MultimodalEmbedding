@@ -5,6 +5,7 @@ import yaml
 import torch
 import torch.optim as optim
 import torch.nn as nn
+import wandb
 import pytorch_warmup as warmup
 
 from attrdict import AttrDict
@@ -15,6 +16,75 @@ from losses import MMConLoss
 from dataset import MMDataset
 
 from argparse import ArgumentParser
+
+
+def train(
+    opts,
+    model,
+    loader,
+    criterion,
+    optimizer,
+    scheduler,
+    warmup_scheduler,
+):
+    step = 0
+    max_epoch = -(-opts.train.max_step // len(loader))
+    prog_bar = tqdm(range(opts.train.max_step))
+    
+    if opts.train.fp16:
+        scaler = torch.cuda.amp.GradScaler()
+    
+    for epoch in range(max_epoch):
+        
+        for batch in train_loader:
+            if step == opts.train.max_step:
+                break
+            step += 1
+            
+            # load batch to device
+            vid_inp = batch['video'].to(device)
+            spec_inp = batch['spec'].to(device)
+            aud_inp = batch['audio'].to(device)
+
+            optimizer.zero_grad()
+            
+            if opts.train.fp16:
+                with torch.cuda.amp.autocast():
+                    output = model(vid_inp, spec_inp, aud_inp)
+                    loss = criterion(output)
+                    
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+                
+            else:
+                output = model(vid_inp, spec_inp, aud_inp)
+                loss = criterion(output)
+                loss.backward()
+                optimizer.step()
+                
+
+            # status
+            if opts.train.wandb:
+                wandb.log({
+                    'lr': optimizer.param_groups[0]['lr'],
+                    'loss': loss.item(),
+                    # 'loss_vs': ,
+                    # 'loss_vw': ,
+                    # 'loss_sw': ,
+                })
+
+            # scheduler step
+            with warmup_scheduler.dampening():
+                lr_scheduler.step()
+
+            prog_bar.update()
+            prog_bar.set_description(
+                f"epoch: {round(step / len(loader), 3)} | ",
+                f"loss: {round(loss.item(), 3)}"
+            )
+
+
 
 
 if __name__ == '__main__':
@@ -28,15 +98,29 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-
+    
     # load opts
     with open(args.config_path) as f:
         opts = AttrDict(yaml.safe_load(f))
 
+    if opts.train.wandb:
+        
+        # parameter validation
+        assert 'tmp' not in opts.train.wandb_exp_name, "Set wandb_exp_name"
+        # login
+        wandb.login()
+
+        # init_wandb
+        wandb.init(
+            project="multi-modal-embedding", 
+            name=opts.train.wandb_exp_name, 
+            config=opts,
+        )
+
     # determine device
     device = opts.train.device
     if not torch.cuda.is_available():
-        assert 'cuda' not in opts.train.device, 'CUDA is not available.'
+        assert 'cuda' not in opts.train.device, "CUDA is not available."
 
 
     # load model
@@ -72,35 +156,9 @@ if __name__ == '__main__':
         warmup_period=opts.train.warmup_step
     )
 
-    losses = []    # TODO: replace this with wandb
 
-    for epoch in range(opts.train.epoch):
-        prog_bar = tqdm(train_loader)
-        for batch in prog_bar:
-            # load batch to device
-            vid_inp = batch['video'].to(device)
-            spec_inp = batch['spec'].to(device)
-            aud_inp = batch['audio'].to(device)
-
-            optimizer.zero_grad()
-            output = model(vid_inp, spec_inp, aud_inp)
-            loss = criterion(output)
-            loss.backward()
-            optimizer.step()
-
-            # status
-            lr = optimizer.param_groups[0]['lr']
-            loss_item = loss.item()
-            losses.append(loss_item)
-
-            with warmup_scheduler.dampening():
-                lr_scheduler.step()
-
-            prog_bar.update()
-            prog_bar.set_description(f"epoch: {epoch} | loss: {round(loss_item, 3)}")
-
-            
-    import matplotlib.pyplot as plt
-
-    plt.plot(losses)
-    plt.show()
+    train(opts, model, train_loader, criterion, 
+          optimizer, lr_scheduler, warmup_scheduler)
+    
+    if opts.train.wandb:
+        wandb.finish()

@@ -1,25 +1,27 @@
 train:
     device: 'cpu'
     lr: 0.0002
-    warmup_step: 5000
-    max_step: 400000
+    warmup_step: 10
+    max_step: 40
     batch_size: 32
     num_workers: 4
-    fp16: true
-    
+    fp16: false
+    wandb: true
+    wandb_exp_name: 'tmp_exp'
+
 model:
     video:
         num_segments: 15
         n_div: 8
     spec:
-        sample_rate: 16000
+        sample_rate: 32000
         window_size_ms: 0.025
         hop_size_ms: 0.010
         mel_bins: 64
         fmin: 50
         fmax: 14000
     audio:
-        sample_rate: 16000
+        sample_rate: 32000
         
     feature_dim: 2048
     hidden_dim: 512
