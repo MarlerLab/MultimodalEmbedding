@@ -52,7 +52,8 @@ if __name__ == '__main__':
         batch_size=opts.train.batch_size,
         num_workers=opts.train.num_workers,
         shuffle=True,
-        pin_memory=True
+        pin_memory=True,
+        drop_last=True,
     )
 
 
@@ -71,10 +72,10 @@ if __name__ == '__main__':
         warmup_period=opts.train.warmup_step
     )
 
-    # losses = []    # TODO: replace this with wandb
-    prog_bar = tqdm(train_loader)
+    losses = []    # TODO: replace this with wandb
 
     for epoch in range(opts.train.epoch):
+        prog_bar = tqdm(train_loader)
         for batch in prog_bar:
             # load batch to device
             vid_inp = batch['video'].to(device)
@@ -96,7 +97,7 @@ if __name__ == '__main__':
                 lr_scheduler.step()
 
             prog_bar.update()
-            prog_bar.set_description(f"{loss_item}")
+            prog_bar.set_description(f"epoch: {epoch} | loss: {round(loss_item, 3)}")
 
             
     import matplotlib.pyplot as plt
