@@ -30,7 +30,7 @@ model:
 
 dataset:
     video_dir: 'processed/video/'
-    spec_dir: 'processed/spectrogram/'
+    spec_dir: 'processed/spec/'
     audio_dir: 'processed/audio/'
     
     video_ext: '.mp4'
