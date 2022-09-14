@@ -6,7 +6,7 @@ import torchvision.transforms as vision_T
 import torchaudio
 
 from torch.utils.data import Dataset
-
+from tqdm import tqdm
 
 # TODO: refactor this disgusting code
 
@@ -31,12 +31,35 @@ class MMDataset(Dataset):
             vision_T.RandomResizedCrop((50, 50)),
             vision_T.ColorJitter(0.5, 0.5, 0.5, 0.5)
         ])
+        
+        # Pre-load everything to RAM to avoid dataloader bottleneck
+        self.preload = opts.dataset.preload
+        if self.preload:
+            raise NotImplementedError("Implmentation needs to change to cache the entire datset!")
+            print("Caching data to RAM...")
+            self.cache = {
+                # 'video_path': video,
+                # 'spec_path': spec,
+                # 'audio_path': audio
+            }
+            for file_name in tqdm(self.file_names):
+                vp = os.path.join(self.video_dir, file_name + self.v_ext)
+                sp = os.path.join(self.spec_dir, file_name + self.s_ext)
+                ap = os.path.join(self.audio_dir, file_name + self.a_ext)
+
+                self.cache[vp] = torchvision.io.read_video(vp, pts_unit='sec')[0].numpy()
+                self.cache[sp] = torchaudio.load(sp)[0].numpy()
+                self.cache[ap] = torchaudio.load(ap)[0].numpy()
 
         
     def _load_video(self, video_path):
         
         # video: (T, H, W, C)
-        video, _, _ = torchvision.io.read_video(video_path)
+        if self.preload:
+            video = torch.from_numpy(self.cache[video_path])
+        else:
+            video, _, _ = torchvision.io.read_video(video_path, pts_unit='sec')
+            
         if video.dtype == torch.uint8:
             video = video / 255
         
@@ -48,8 +71,14 @@ class MMDataset(Dataset):
     
     def _load_audio(self, audio_path, reduction='mean'):
         assert reduction in ['mean', 'first']
-        audio, sr = torchaudio.load(audio_path)
         
+        # audio: (C, num_samples)
+        if self.preload:
+            audio = torch.from_numpy(self.cache[audio_path])
+        else:
+            audio, sr = torchaudio.load(audio_path)
+        
+        # audio: (num_samples, )
         if reduction == 'mean':
             audio = audio.mean(dim=0, keepdim=False)
         elif reduction == 'first':
@@ -77,5 +106,10 @@ class MMDataset(Dataset):
             'spec': s_data,    # (num_samples, )
             'audio': a_data    # (num_samples, )
         }
+        # data = {
+        #     'video': self.cache['video'][idx],   # (T, C, H', W')
+        #     'spec': self.cache['spec'][idx],    # (num_samples, )
+        #     'audio': self.cache['audio'][idx]    # (num_samples, )
+        # }
         
         return data

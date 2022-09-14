@@ -41,6 +41,8 @@ def train(
                 break
             step += 1
             
+            # TODO: save model every n step
+            
             # load batch to device
             vid_inp = batch['video'].to(device)
             spec_inp = batch['spec'].to(device)
@@ -48,6 +50,7 @@ def train(
 
             optimizer.zero_grad()
             
+            # TODO: fp16 causes nan value in the first iteration. Debug this!
             if opts.train.fp16:
                 with torch.cuda.amp.autocast():
                     output = model(vid_inp, spec_inp, aud_inp)
@@ -70,14 +73,24 @@ def train(
                     # check architecture value
                     os.makedirs('debug', exist_ok=True)
                     import json
-                    logger = {
-                        'video': vid_enc_logger,
-                        'spec': spec_enc_logger,
-                        'audio': aud_enc_logger,
-                        'projector': projector_logger,
-                    }
-                    with open(os.path.join('debug', 'weight_log.json'), 'w') as f:
-                        json.dump(logger, f, indent=4)
+                    import pandas as pd
+                    # logger = {
+                    #     'video': vid_enc_logger,
+                    #     'spec': spec_enc_logger,
+                    #     'audio': aud_enc_logger,
+                    #     'projector': projector_logger,
+                    # }
+                    # with open(os.path.join('debug', 'weight_log.json'), 'w') as f:
+                    #     json.dump(logger, f, indent=4)
+                    df = pd.DataFrame(vid_enc_logger)
+                    df.to_csv(os.path.join('debug', 'vid_enc_logger.csv'))
+                    df = pd.DataFrame(aud_enc_logger)
+                    df.to_csv(os.path.join('debug', 'aud_enc_logger.csv'))
+                    df = pd.DataFrame(spec_enc_logger)
+                    df.to_csv(os.path.join('debug', 'spec_enc_logger.csv'))
+                    df = pd.DataFrame(projector_logger)
+                    df.to_csv(os.path.join('debug', 'projector_logger.csv'))
+                    raise ValueError("Nan occurred!")
                 #########################
 
             # log status
