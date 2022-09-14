@@ -41,8 +41,6 @@ def train(
                 break
             step += 1
             
-            # TODO: save model every n step
-            
             # load batch to device
             vid_inp = batch['video'].to(device)
             spec_inp = batch['spec'].to(device)
@@ -50,7 +48,6 @@ def train(
 
             optimizer.zero_grad()
             
-            # TODO: fp16 causes nan value in the first iteration. Debug this!
             if opts.train.fp16:
                 with torch.cuda.amp.autocast():
                     output = model(vid_inp, spec_inp, aud_inp)
@@ -113,6 +110,22 @@ def train(
             with warmup_scheduler.dampening():
                 scheduler.step()
 
+            # Save model every ckpt_itr step
+            if opts.train.save_ckpt:
+                if step % opts.train.save_ckpt_itr == 0:
+                    ckpt = {
+                        'model': model.state_dict(),
+                        'optimizer': optimizer.state_dict(),
+                        'scheduler': scheduler.state_dict(),
+                        'warmup_scheduler': warmup_scheduler.state_dict(),
+
+                        'misc': {
+                            'opts': dict(opts),
+                            'step': step
+                        }
+                    }
+                    torch.save(ckpt, os.path.join(opts.train.save_ckpt_dir, f'{step:08d}.pt'))
+
             prog_bar.update()
             prog_bar.set_description(
                 f"epoch: {round(step / len(loader), 3)} | "
@@ -137,6 +150,13 @@ if __name__ == '__main__':
     # load opts
     with open(args.config_path) as f:
         opts = AttrDict(yaml.safe_load(f))
+
+    # init ckpt
+    if opts.train.save_ckpt:
+        os.makedirs(opts.train.save_ckpt_dir, exist_ok=True)
+
+    if opts.train.load_ckpt:
+        assert os.path.exists(opts.train.load_ckpt_path)
 
     if opts.train.wandb:
         
@@ -224,6 +244,9 @@ if __name__ == '__main__':
         optimizer,
         warmup_period=opts.train.warmup_step
     )
+
+
+    # TODO: load state_dict if load_ckpt is set to true
 
 
     train(opts, model, train_loader, criterion, 

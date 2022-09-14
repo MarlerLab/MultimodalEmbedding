@@ -27,9 +27,9 @@ class MMDataset(Dataset):
         self.file_names = list(set.intersection(set(v_fns), set(s_fns), set(a_fns)))
         
         self.v_transform = vision_T.Compose([
-            vision_T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
             vision_T.RandomResizedCrop((50, 50)),
-            vision_T.ColorJitter(0.5, 0.5, 0.5, 0.5)
+            vision_T.ColorJitter(0.5, 0.5, 0.5, 0.5),
+            vision_T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ])
         
         # Pre-load everything to RAM to avoid dataloader bottleneck

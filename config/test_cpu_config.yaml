@@ -6,9 +6,17 @@ train:
     batch_size: 32
     num_workers: 4
     fp16: false
-    wandb: true
+    wandb: false
     wandb_exp_name: 'debug_converge'
     debug: true
+
+    # ckpt
+    save_ckpt: true
+    save_ckpt_dir: 'ckpt/'
+    save_ckpt_itr: 1000
+
+    load_ckpt: false
+    load_ckpt_path: ''
 
 model:
     video:
