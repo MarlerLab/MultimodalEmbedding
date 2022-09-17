@@ -1,0 +1,11 @@
+dataset:
+    preload: false
+    
+    video_dir: 'processed_data/subset_pets/video/'
+    spec_dir: 'processed_data/subset_pets/spec/'
+    audio_dir: 'processed_data/subset_pets/audio/'
+    
+    video_ext: '.mp4'
+    spec_ext: '.flac'
+    audio_ext: '.flac'
+    
