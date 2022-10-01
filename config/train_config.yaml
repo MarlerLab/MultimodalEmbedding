@@ -1,19 +1,19 @@
 train:
     device: 'cuda'
     lr: 0.0002
-    warmup_step: 500
-    max_step: 40000
+    warmup_step: 5000
+    max_step: 400000
     batch_size: 32
-    num_workers: 4
-    fp16: false
-    wandb: false
-    wandb_exp_name: 'debug_converge'
+    num_workers: 8
+    fp16: true
+    wandb: true
+    wandb_exp_name: 'train_400k'
     debug: true
 
     # ckpt
     save_ckpt: true
     save_ckpt_dir: 'ckpt/'
-    save_ckpt_itr: 1000
+    save_ckpt_itr: 10000
 
     load_ckpt: false
     load_ckpt_path: ''
@@ -23,14 +23,14 @@ model:
         num_segments: 15
         n_div: 8
     spec:
-        sample_rate: 32000
+        sample_rate: 16000
         window_size_ms: 0.025
         hop_size_ms: 0.010
         mel_bins: 64
         fmin: 50
         fmax: 14000
     audio:
-        sample_rate: 32000
+        sample_rate: 16000
         
     feature_dim: 2048
     hidden_dim: 512

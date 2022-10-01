@@ -1,12 +1,15 @@
 # import 
 import os
 import yaml
+import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 from attrdict import AttrDict
 from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from models import MMEncoder
@@ -20,12 +23,14 @@ def analyze_embedding(modality, samples, reduction_model):
     modality_samples_list = []
     
     for label in range(num_labels):
-        modality_samples_list.append(samples[label][modality])
+        modality_samples_list.append(F.normalize(samples[label][modality], dim=-1))
     
     modality_samples = torch.concat(modality_samples_list)
     samples_cnt = [ms.shape[0] for ms in modality_samples_list]
+    
+    np.savez("modality_samples.npz", **{str(lbl): ms.cpu().numpy() for lbl, ms in enumerate(modality_samples_list)})
 
-    reduced_emb = reduction_model.fit_transform(modality_samples)
+    reduced_emb = reduction_model.fit_transform(modality_samples.cpu().numpy())
     cnt = 0
     for label in range(num_labels):
         sc = samples_cnt[label]
@@ -75,9 +80,9 @@ if __name__ == '__main__':
 
     samples = {
         lbl: {
-            'video': torch.empty(0, opts.model.emb_dim), 
-            'spec': torch.empty(0, opts.model.emb_dim),
-            'audio': torch.empty(0, opts.model.emb_dim)
+            'video': torch.empty(0, opts.model.emb_dim).to(device), 
+            'spec': torch.empty(0, opts.model.emb_dim).to(device),
+            'audio': torch.empty(0, opts.model.emb_dim).to(device)
         } 
         for lbl in range(len(loaders))
     }
@@ -100,7 +105,8 @@ if __name__ == '__main__':
                 samples[lbl_idx]['spec'] = torch.concat([samples[lbl_idx]['spec'], emb['spec']], dim=0)
                 samples[lbl_idx]['audio'] = torch.concat([samples[lbl_idx]['audio'], emb['audio']], dim=0)
             prog_bar.update()
-    reduction_model = TSNE(n_components=2, learning_rate='auto', init='random', perplexity=30.)
-    reduced_emb = analyze_embedding('video', samples, reduction_model)
+    reduction_model = TSNE(n_components=2, learning_rate='auto', init='random', perplexity=50.)
+    # # reduction_model = PCA(n_components=2)
+    reduced_emb = analyze_embedding('spec', samples, reduction_model)
 
 
