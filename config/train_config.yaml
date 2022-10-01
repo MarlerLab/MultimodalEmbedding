@@ -1,12 +1,23 @@
 train:
-    device: 'cpu'
+    device: 'cuda'
     lr: 0.0002
     warmup_step: 5000
     max_step: 400000
     batch_size: 32
-    num_workers: 4
+    num_workers: 8
     fp16: true
-    
+    wandb: true
+    wandb_exp_name: 'train_400k'
+    debug: true
+
+    # ckpt
+    save_ckpt: true
+    save_ckpt_dir: 'ckpt/'
+    save_ckpt_itr: 10000
+
+    load_ckpt: false
+    load_ckpt_path: ''
+
 model:
     video:
         num_segments: 15
@@ -26,9 +37,14 @@ model:
     emb_dim: 128
 
 dataset:
-    video_dir: 'processed/video/'
-    spec_dir: 'processed/spectrogram/'
-    audio_dir: 'processed/audio/'
+    preload: false
+    
+    video_dir: 'processed_data/video/'
+    spec_dir: 'processed_data/spec/'
+    audio_dir: 'processed_data/audio/'
+    # video_dir: 'old_processed/video/'
+    # spec_dir: 'old_processed/spec/'
+    # audio_dir: 'old_processed/audio/'
     
     video_ext: '.mp4'
     spec_ext: '.flac'

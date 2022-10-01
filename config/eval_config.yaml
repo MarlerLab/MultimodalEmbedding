@@ -1,17 +1,22 @@
-train:
+eval:
     device: 'cpu'
-    lr: 0.0002
-    warmup_step: 5000
-    max_step: 400000
-    batch_size: 32
-    num_workers: 4
-    fp16: true
-    
+    batch_size: 16
+
+    load_ckpt: false
+    load_ckpt_path: 'ckpt/00050000.pt'
+
+    subset_config_path:
+        - 'config/subset/instruments.yaml'
+        - 'config/subset/pets.yaml'
+        - 'config/subset/speech.yaml'
+
+
 model:
     video:
         num_segments: 15
         n_div: 8
     spec:
+        # sample_rate needs to be changed to 16000
         sample_rate: 16000
         window_size_ms: 0.025
         hop_size_ms: 0.010
@@ -24,13 +29,3 @@ model:
     feature_dim: 2048
     hidden_dim: 512
     emb_dim: 128
-
-dataset:
-    video_dir: 'processed/video/'
-    spec_dir: 'processed/spectrogram/'
-    audio_dir: 'processed/audio/'
-    
-    video_ext: '.mp4'
-    spec_ext: '.flac'
-    audio_ext: '.flac'
-    

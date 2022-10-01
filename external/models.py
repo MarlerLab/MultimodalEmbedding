@@ -187,7 +187,11 @@ class Cnn14(nn.Module):
         Input: (batch_size, data_length)"""
 
         x = self.spectrogram_extractor(input)   # (batch_size, 1, time_steps, freq_bins)
-        x = self.logmel_extractor(x)    # (batch_size, 1, time_steps, mel_bins)
+
+        # make fp16 compatible
+        with torch.cuda.amp.autocast(enabled=False):
+            x = self.logmel_extractor(x.float())    # (batch_size, 1, time_steps, mel_bins)
+        # x = self.logmel_extractor(x)    # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
         x = self.bn0(x)

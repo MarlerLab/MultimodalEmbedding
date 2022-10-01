@@ -29,17 +29,14 @@ class MMConLoss(nn.Module):
         # emb[modality]: (n_batch, emb_dim)
         assert type(emb) == dict
 
-        loss = 0
-        self.debug = {}
+        main_loss = 0
+        self.modality_loss = {}
         
         for query, key in self.modality_pairs:
             # loss += self.info_nce(emb[query], emb[key])
-            tmp = self.info_nce(emb[query], emb[key])
-            loss += tmp
-            self.debug[(query, key)] = tmp.item()
-        if torch.isnan(loss):
-            print(self.debug)
-            assert True
+            loss = self.info_nce(emb[query], emb[key])
+            self.modality_loss[(query, key)] = loss.item()
+            main_loss += loss
         
-        return loss
+        return main_loss
     
